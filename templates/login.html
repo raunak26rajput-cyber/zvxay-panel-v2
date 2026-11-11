@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Login · ZVXAY{% endblock %}
+{% block content %}
+
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="logo-icon">⚡</div>
+      <h1>ZVXAY <span>PANEL</span></h1>
+      <p>Enter your credentials to access the panel</p>
+    </div>
+
+    <form method="post" action="{{ url_for('login_post') }}" class="form-grid">
+      <div>
+        <span class="form-label">Username</span>
+        <input name="username" required autocomplete="username" placeholder="your username" />
+      </div>
+      <div>
+        <span class="form-label">Password</span>
+        <input name="password" type="password" required autocomplete="current-password" placeholder="••••••••" />
+      </div>
+      <button class="btn btn-primary w-full" type="submit">Login →</button>
+    </form>
+
+  </div>
+</div>
+
+{% endblock %}
