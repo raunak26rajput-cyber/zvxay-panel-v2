@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>{% block title %}ZVXAY Panel{% endblock %}</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+  <!-- ── HEADER ── -->
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="{{ url_for('dashboard') }}">
+        <div class="brand-icon">⚡</div>
+        <div>
+          <div class="brand-name">ZVXAY <span>PANEL</span></div>
+        </div>
+        <div class="brand-badge">PANEL v2</div>
+      </a>
+
+      <!-- Desktop nav -->
+      <nav class="nav">
+        {% if session.get('uid') %}
+          <a href="{{ url_for('dashboard') }}" class="nav-link">🏠 Home</a>
+          <a href="{{ url_for('upload') }}" class="nav-link">⬆ Upload</a>
+          <a href="{{ url_for('my_files') }}" class="nav-link">📁 Files</a>
+          <a href="{{ url_for('logout') }}" class="btn btn-ghost btn-sm">Logout</a>
+        {% else %}
+          <a href="{{ url_for('login') }}" class="btn btn-primary btn-sm">Login</a>
+        {% endif %}
+      </nav>
+
+      <!-- Hamburger (mobile) -->
+      <button class="hamburger" id="hamburger" aria-label="Menu" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+
+    <!-- Mobile nav drawer -->
+    <div class="mobile-nav" id="mobile-nav">
+      {% if session.get('uid') %}
+        <a href="{{ url_for('dashboard') }}" class="nav-link">🏠 Home</a>
+        <a href="{{ url_for('upload') }}" class="nav-link">⬆ Upload Bot</a>
+        <a href="{{ url_for('my_files') }}" class="nav-link">📁 My Files</a>
+        <a href="{{ url_for('logout') }}" class="btn btn-ghost">Logout</a>
+      {% else %}
+        <a href="{{ url_for('login') }}" class="btn btn-primary">Login</a>
+      {% endif %}
+    </div>
+  </header>
+
+  <!-- ── FLASH MESSAGES ── -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="container flash-stack">
+      {% for cat, msg in messages %}
+        <div class="flash {{ cat }}">
+          {% if cat == 'success' %}✓{% elif cat == 'error' %}✗{% elif cat == 'warning' %}⚠{% else %}ℹ{% endif %}
+          <span>{{ msg|safe }}</span>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+  {% endwith %}
+
+  <!-- ── MAIN ── -->
+  <main class="container page-content">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- ── FOOTER ── -->
+  <footer class="site-footer">
+    <div class="container">
+      <span>© 2026 <span class="fx">ZVXAY</span> · Panel v2</span>
+    </div>
+  </footer>
+
+  <!-- ── BOTTOM NAV (Mobile only, logged in) ── -->
+  {% if session.get('uid') %}
+  <nav class="bottom-nav">
+    <a href="{{ url_for('dashboard') }}" class="bottom-nav-item {% if request.endpoint == 'dashboard' %}active{% endif %}">
+      <span class="bottom-nav-icon">🏠</span>
+      <span class="bottom-nav-label">Home</span>
+    </a>
+    <a href="{{ url_for('upload') }}" class="bottom-nav-item {% if request.endpoint in ('upload','upload_post') %}active{% endif %}">
+      <span class="bottom-nav-icon">⬆</span>
+      <span class="bottom-nav-label">Upload</span>
+    </a>
+    <a href="{{ url_for('my_files') }}" class="bottom-nav-item {% if request.endpoint == 'my_files' %}active{% endif %}">
+      <span class="bottom-nav-icon">📁</span>
+      <span class="bottom-nav-label">Files</span>
+    </a>
+    <a href="{{ url_for('logout') }}" class="bottom-nav-item">
+      <span class="bottom-nav-icon">🚪</span>
+      <span class="bottom-nav-label">Exit</span>
+    </a>
+  </nav>
+  {% endif %}
+
+  <!-- ── CUSTOM MODAL ── -->
+  <div class="modal-overlay" id="modal-overlay" aria-hidden="true">
+    <div class="modal-box" role="dialog" aria-modal="true">
+      <div class="modal-icon" id="modal-icon">❓</div>
+      <div class="modal-title" id="modal-title">Confirm</div>
+      <div class="modal-msg" id="modal-msg"></div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="modal-cancel">Cancel</button>
+        <button class="btn btn-danger" id="modal-confirm">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <script defer src="{{ url_for('static', filename='js/main.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block title %}My Files · ZVXAY{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <a href="{{ url_for('dashboard') }}" class="btn btn-ghost btn-sm">← Home</a>
+    <div>
+      <h1 class="page-title">My Files</h1>
+      <p class="page-subtitle">{{ total_files }} file{{ 's' if total_files != 1 }} · {{ total_size }} total used</p>
+    </div>
+  </div>
+  <a href="{{ url_for('upload') }}" class="btn btn-primary btn-sm">+ Upload</a>
+</div>
+
+<!-- Summary bar -->
+<div class="stats-bar" style="margin-bottom:20px">
+  <div class="stat-card stat-cyan">
+    <div class="stat-value">{{ folders|length }}</div>
+    <div class="stat-label">Bots / Folders</div>
+  </div>
+  <div class="stat-card stat-green">
+    <div class="stat-value">{{ total_files }}</div>
+    <div class="stat-label">Total Files</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value" style="font-size:18px;color:var(--cyan)">{{ total_size }}</div>
+    <div class="stat-label">Storage Used</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value" style="color:var(--text-muted)">
+      {% set py_count = namespace(n=0) %}
+      {% for folder in folders %}{% for f in folder.files %}{% if f.ext == '.py' %}{% set py_count.n = py_count.n + 1 %}{% endif %}{% endfor %}{% endfor %}
+      {{ py_count.n }}
+    </div>
+    <div class="stat-label">Python Files</div>
+  </div>
+</div>
+
+{% if not folders %}
+  <div class="card">
+    <div class="empty-state">
+      <span class="icon">📂</span>
+      <h3>No files yet</h3>
+      <p>Upload a bot to see your files here.</p>
+      <a href="{{ url_for('upload') }}" class="btn btn-primary" style="margin-top:16px">+ Upload First Bot</a>
+    </div>
+  </div>
+{% endif %}
+
+<!-- Folder cards -->
+<div class="stack">
+{% for folder in folders %}
+{% set bot = folder.bot %}
+  <div class="file-folder-card card" id="folder-{{ bot.id }}">
+
+    <!-- Folder header -->
+    <div class="folder-header" onclick="toggleFolder({{ bot.id }})">
+      <div class="folder-icon-wrap">
+        <span class="folder-icon">📁</span>
+      </div>
+      <div class="folder-info">
+        <div class="folder-name">
+          <span class="uid-chip" style="font-size:10px">{{ bot.uid }}</span>
+          <span class="bold" style="margin-left:6px">{{ bot.filename }}</span>
+          {% if bot.status == 'running' %}
+            <span class="badge badge-running" style="margin-left:6px">Running</span>
+          {% elif bot.status == 'stopped' %}
+            <span class="badge badge-stopped" style="margin-left:6px">Stopped</span>
+          {% elif bot.status == 'pending' %}
+            <span class="badge badge-pending" style="margin-left:6px">Pending</span>
+          {% else %}
+            <span class="badge" style="margin-left:6px;background:rgba(255,255,255,.06);color:var(--text-muted);border-color:var(--border)">{{ bot.status|title }}</span>
+          {% endif %}
+        </div>
+        <div class="folder-meta">
+          <span>{{ folder.file_count }} file{{ 's' if folder.file_count != 1 }}</span>
+          <span class="dot">·</span>
+          <span>{{ folder.folder_size }}</span>
+          {% if bot.main_file %}
+            <span class="dot">·</span>
+            <span>Entry: <code class="mono" style="font-size:11px">{{ bot.main_file }}</code></span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="folder-toggle" id="toggle-{{ bot.id }}">▾</div>
+    </div>
+
+    <!-- File list (collapsible) -->
+    <div class="file-list" id="filelist-{{ bot.id }}">
+      {% if not folder.files %}
+        <div class="file-empty">No files found in this folder.</div>
+      {% else %}
+        <div class="file-list-header">
+          <span>Name</span>
+          <span class="hide-xs">Size</span>
+          <span class="hide-sm">Modified</span>
+          <span>Action</span>
+        </div>
+        {% for file in folder.files %}
+        <div class="file-row {% if file.is_main %}file-row-main{% endif %}">
+          <div class="file-name-col">
+            <span class="file-ext-icon">{{ {
+              '.py':   '🐍',
+              '.zip':  '📦',
+              '.txt':  '📄',
+              '.json': '🔧',
+              '.env':  '🔒',
+              '.md':   '📝',
+              '.log':  '📋',
+              '.sh':   '⚙️',
+              '.cfg':  '🔧',
+              '.ini':  '🔧',
+              '.yml':  '🔧',
+              '.yaml': '🔧',
+              '.csv':  '📊',
+              '.db':   '🗄️',
+              '.png':  '🖼️',
+              '.jpg':  '🖼️',
+              '.jpeg': '🖼️',
+              '.gif':  '🖼️',
+              '.mp4':  '🎥',
+              '.mp3':  '🎵',
+            }.get(file.ext, '📄') }}</span>
+            <div class="file-name-info">
+              <span class="file-name">{{ file.rel }}</span>
+              {% if file.is_main %}
+                <span class="file-main-badge">main</span>
+              {% endif %}
+            </div>
+          </div>
+          <span class="file-size hide-xs">{{ file.size_str }}</span>
+          <span class="file-date hide-sm">{{ file.modified }}</span>
+          <div class="file-actions">
+            <a class="btn btn-ghost btn-xs"
+               href="{{ url_for('download_file', bot_id=bot.id, rel_path=file.rel) }}"
+               title="Download {{ file.name }}">⬇</a>
+          </div>
+        </div>
+        {% endfor %}
+      {% endif %}
+
+      <!-- Folder footer -->
+      <div class="folder-footer">
+        <a href="{{ url_for('logs', bot_id=bot.id) }}" class="btn btn-ghost btn-xs">📋 Logs</a>
+        {% if bot.status == 'running' %}
+          <button class="btn btn-danger btn-xs" data-action="stop" data-id="{{ bot.id }}">⬛ Stop</button>
+        {% else %}
+          <button class="btn btn-success btn-xs" data-action="start" data-id="{{ bot.id }}">▶ Start</button>
+        {% endif %}
+        <a href="{{ url_for('dashboard') }}" class="btn btn-ghost btn-xs">🏠 Dashboard</a>
+      </div>
+    </div>
+
+  </div>
+{% endfor %}
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+function toggleFolder(id) {
+  const list    = document.getElementById('filelist-' + id);
+  const toggle  = document.getElementById('toggle-' + id);
+  const isOpen  = list.classList.toggle('open');
+  toggle.textContent = isOpen ? '▴' : '▾';
+}
+
+// Open all folders by default
+document.querySelectorAll('.file-list').forEach(el => el.classList.add('open'));
+document.querySelectorAll('.folder-toggle').forEach(el => el.textContent = '▴');
+</script>
+{% endblock %}

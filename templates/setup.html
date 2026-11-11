@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Setup Bot · {{ bot.filename }} · ZVXAY{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <a href="{{ url_for('dashboard') }}" class="btn btn-ghost btn-sm">← Back</a>
+    <div>
+      <h1 class="page-title">Setup Bot</h1>
+      <p class="page-subtitle">Configure entry point for <code class="mono">{{ bot.filename }}</code></p>
+    </div>
+  </div>
+  <div class="uid-chip">{{ bot.uid }}</div>
+</div>
+
+<div style="max-width:620px" class="stack">
+
+  {% if has_req %}
+    <div class="alert alert-success">
+      📦 <strong>requirements.txt found</strong> — {{ req_count }} package{{ 's' if req_count != 1 }}.
+      You can install after setup from dashboard (📦 button). Or they'll be <strong>auto-installed</strong> on bot start!
+    </div>
+  {% endif %}
+
+  <div class="card">
+    <div class="section-title"><span class="accent">🐍</span> Select Entry Point</div>
+    <p class="text-sm dim" style="margin-bottom:14px">
+      Selected file will run with <code>python3</code> on Start. Auto-detected candidate shown below.
+    </p>
+
+    <form method="post" action="{{ url_for('setup_bot_post', bot_id=bot.id) }}" class="stack">
+      <div class="py-file-list">
+        {% for f in py_files %}
+          <label class="py-file-item">
+            <input type="radio" name="main_file" value="{{ f }}"
+              {% if f == bot.main_file or (loop.first and not bot.main_file) %}checked{% endif %}
+              required />
+            <span class="py-file-name">{{ f }}</span>
+            {% if loop.first %}
+              <span class="py-file-badge-top">✦ Auto-detected</span>
+            {% endif %}
+          </label>
+        {% endfor %}
+      </div>
+
+      {% if not py_files %}
+        <div class="alert alert-warn">No Python files found in the ZIP.</div>
+      {% else %}
+        <div class="row" style="gap:10px">
+          <button class="btn btn-primary flex-1" type="submit">Confirm Setup →</button>
+          <a class="btn btn-ghost" href="{{ url_for('dashboard') }}">🏠 Home</a>
+        </div>
+      {% endif %}
+    </form>
+  </div>
+
+  <div class="card card-glass">
+    <p class="text-sm dim">
+      <strong class="text-cyan">Tip:</strong> Auto-detection scores files by name
+      (<code>main.py</code> → <code>bot.py</code> → <code>app.py</code>) and prefers root-level files.
+    </p>
+  </div>
+
+</div>
+
+{% endblock %}

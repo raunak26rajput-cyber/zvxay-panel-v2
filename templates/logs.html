@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Logs · {{ bot.filename }} · ZVXAY PANEL{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <a href="{{ url_for('dashboard') }}" class="btn btn-ghost btn-sm">← Back</a>
+    <div>
+      <h1 class="page-title">Bot Logs</h1>
+      <p class="page-subtitle">
+        <span class="uid-chip">{{ bot.uid }}</span>
+        &nbsp;<code class="mono" style="font-size:13px">{{ bot.main_file or bot.filename }}</code>
+      </p>
+    </div>
+  </div>
+  <div class="row" style="flex-wrap:wrap;gap:8px">
+    <label class="toggle" style="font-size:13px;color:var(--text-dim)">
+      <input type="checkbox" id="auto-refresh" checked /> Live (3s)
+    </label>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('download_logs', bot_id=bot.id) }}">⬇ Download</a>
+  </div>
+</div>
+
+<div class="row" style="margin-bottom:14px;flex-wrap:wrap;gap:8px">
+  {% if bot.status == 'running' %}
+    <span class="badge badge-running">Running</span>
+    <span class="text-sm mono dim">PID: {{ bot.pid }}</span>
+    <span class="text-sm mono dim">Uptime: {{ bot.uptime_str() }}</span>
+  {% elif bot.status == 'stopped' %}
+    <span class="badge badge-stopped">Stopped</span>
+  {% else %}
+    <span class="badge badge-pending">{{ bot.status|title }}</span>
+  {% endif %}
+  <span class="text-sm mono dim">Restarts: {{ bot.restart_count or 0 }}</span>
+  <span class="text-sm mono dim">{{ bot.file_size_str() }}</span>
+</div>
+
+<div class="card" style="padding:0">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px">
+    <span class="text-xs mono dim">stdout / stderr</span>
+    <button onclick="clearView()" class="btn btn-ghost btn-xs">Clear View</button>
+  </div>
+  <pre class="logbox" id="logbox">{{ logs or '(No log output yet. Start the bot to see output here.)' }}</pre>
+</div>
+
+<input type="hidden" id="bot-id" value="{{ bot.id }}" />
+
+{% endblock %}
+{% block scripts %}
+<script>
+function clearView() {
+  document.getElementById('logbox').textContent = '(cleared — live refresh will restore)';
+}
+</script>
+{% endblock %}

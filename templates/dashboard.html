@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · ZVXAY{% endblock %}
+{% block content %}
+
+<!-- Page header -->
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Dashboard</h1>
+    <p class="page-subtitle">
+      Hello, <strong>{{ user.username }}</strong> · {{ bots|length }} bot{{ 's' if bots|length != 1 }}
+      {% if user.role == 'owner' %} · <span class="text-cyan">Owner</span>{% endif %}
+    </p>
+  </div>
+  <div class="row gap-sm">
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('my_files') }}">📁 My Files</a>
+    <a class="btn btn-primary btn-sm" href="{{ url_for('upload') }}">+ Upload Bot</a>
+  </div>
+</div>
+
+<!-- Stats bar -->
+{% set running_count = bots|selectattr('status','equalto','running')|list|length %}
+{% set stopped_count = bots|selectattr('status','equalto','stopped')|list|length %}
+{% set pending_count = bots|selectattr('status','equalto','pending')|list|length %}
+{% set setup_count   = bots|selectattr('status','equalto','setup')|list|length %}
+<div class="stats-bar">
+  <div class="stat-card stat-cyan">
+    <div class="stat-value">{{ bots|length }}</div>
+    <div class="stat-label">Total Bots</div>
+  </div>
+  <div class="stat-card stat-green">
+    <div class="stat-value">{{ running_count }}</div>
+    <div class="stat-label">Running</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value" style="color:var(--text-muted)">{{ stopped_count }}</div>
+    <div class="stat-label">Stopped</div>
+  </div>
+  <div class="stat-card stat-orange">
+    <div class="stat-value">{{ pending_count + setup_count }}</div>
+    <div class="stat-label">Pending</div>
+  </div>
+</div>
+
+<!-- Limit warning -->
+{% if file_limit_reached and user.role != 'owner' %}
+<div class="alert alert-warn" style="margin-bottom:14px">
+  ⚠️ <strong>Bot limit reached (2/2).</strong> Delete a bot to upload a new one.
+  {% if contact_link %} — <a href="{{ contact_link }}" target="_blank" class="flash-link bold">Contact Owner →</a>{% endif %}
+</div>
+{% endif %}
+
+<!-- Setup bots -->
+{% set setup_bots = bots|selectattr('status','equalto','setup')|list %}
+{% if setup_bots %}
+<div class="stack-sm" style="margin-bottom:18px">
+  <div class="section-label">⚙ Needs Setup</div>
+  {% for b in setup_bots %}
+  <div class="card card-warn" style="display:flex;align-items:center;flex-wrap:wrap;gap:12px">
+    <div class="flex-1">
+      <span class="badge badge-setup">Setup Required</span>
+      <p class="mono text-sm" style="margin-top:6px">{{ b.filename }}</p>
+      <p class="text-xs muted" style="margin-top:3px">Choose your main Python file to continue</p>
+    </div>
+    <a href="{{ url_for('setup_bot', bot_id=b.id) }}" class="btn btn-warn btn-sm">Configure →</a>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Bot grid -->
+{% set visible_bots = bots|rejectattr('status','equalto','setup')|list %}
+{% if visible_bots %}
+<div class="section-label">🤖 Your Bots</div>
+<div class="bot-grid">
+  {% for b in visible_bots %}
+  <div class="card bot-card">
+    <!-- Head -->
+    <div class="bot-card-head">
+      <div class="stack-sm">
+        <div class="uid-chip">{{ b.uid }}</div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap">
+          {% if b.status == 'running' %}<span class="badge badge-running">Running</span>
+          {% elif b.status == 'pending' %}<span class="badge badge-pending">Pending</span>
+          {% elif b.status == 'rejected' %}<span class="badge badge-rejected">Rejected</span>
+          {% else %}<span class="badge badge-stopped">Stopped</span>{% endif %}
+          {% if b.req_installed %}
+          <span class="badge" style="background:var(--green-dim);color:var(--green);border-color:rgba(0,255,157,.2)">📦 Reqs</span>
+          {% endif %}
+        </div>
+      </div>
+      <a class="btn btn-ghost btn-xs" href="{{ url_for('logs', bot_id=b.id) }}">📋 Logs</a>
+    </div>
+
+    <!-- Details -->
+    <div class="bot-card-info">
+      <div class="bot-info-item">
+        <span class="bot-info-label">File</span>
+        <span class="bot-info-value mono">{{ b.main_file or b.filename }}</span>
+      </div>
+      <div class="bot-info-item">
+        <span class="bot-info-label">Size</span>
+        <span class="bot-info-value">{{ b.file_size_str() }}</span>
+      </div>
+      <div class="bot-info-item">
+        <span class="bot-info-label">PID</span>
+        <span class="bot-info-value mono">{{ b.pid if b.pid else '—' }}</span>
+      </div>
+      <div class="bot-info-item">
+        <span class="bot-info-label">Restarts</span>
+        <span class="bot-info-value mono">{{ b.restart_count or 0 }}</span>
+      </div>
+      <div class="bot-info-item">
+        <span class="bot-info-label">Uptime</span>
+        <span class="bot-info-value mono" style="color:{{ 'var(--green)' if b.status == 'running' else 'inherit' }}">
+          {{ b.uptime_str() }}
+        </span>
+      </div>
+      <div class="bot-info-item">
+        <span class="bot-info-label">Uploaded</span>
+        <span class="bot-info-value mono">{{ b.created_at.strftime('%m/%d %H:%M') if b.created_at else '—' }}</span>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="bot-card-actions">
+      {% if b.status == 'pending' %}
+        <button class="btn btn-disabled w-full" disabled>⏳ Awaiting Approval</button>
+      {% elif b.status == 'rejected' %}
+        <button class="btn btn-disabled flex-1" disabled>✗ Rejected</button>
+        <button class="btn btn-danger btn-sm" data-action="delete" data-id="{{ b.id }}">🗑</button>
+      {% else %}
+        {% if b.status == 'running' %}
+          <button class="btn btn-danger" data-action="stop" data-id="{{ b.id }}">⬛ Stop</button>
+          <button class="btn btn-warn"   data-action="restart" data-id="{{ b.id }}">↺ Restart</button>
+        {% else %}
+          <button class="btn btn-success" data-action="start" data-id="{{ b.id }}">▶ Start</button>
+        {% endif %}
+        <button class="btn btn-ghost btn-sm" data-install="{{ b.id }}" title="Install requirements.txt">📦</button>
+        <button class="btn btn-danger btn-sm" data-action="delete" data-id="{{ b.id }}" title="Delete bot">🗑</button>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Empty state -->
+{% if not bots %}
+<div class="card">
+  <div class="empty-state">
+    <span class="icon">🤖</span>
+    <h3>No bots yet</h3>
+    <p>Upload a <code>.py</code> or <code>.zip</code> file to get started.</p>
+    <a href="{{ url_for('upload') }}" class="btn btn-primary" style="margin-top:16px">+ Upload First Bot</a>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
