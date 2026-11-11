@@ -11,15 +11,20 @@ new `PTERODACTYL_URL` and `PTERODACTYL_API_KEY`.
   server page at `/server/<identifier>` with **Console** (live logs +
   Start/Stop/Restart), **Files** (upload / edit / delete), **Startup**
   (egg variables) and **Settings** (rename, change password) tabs.
-- Admin area at `/admin`: stats, user management (extend validity, ban /
-  unban, delete, create), panel settings, all servers.
+- The seeded admin account logs in like any other user; its dashboard
+  shows every user's servers (owner view). There is no admin UI and no
+  self-registration — accounts are created only by the bot (see below).
 - Hosting engine: user bots run as plain child processes — Python
   (`pip install` from requirements, then `python3 <file>`) and Node.js
   (`npm install`, then the configured run command). Logs are captured to
   `server.log` in each server directory and streamed to the console.
-- Accounts are valid for **20 days** by default (admin-editable). Expired
-  accounts cannot log in and their servers are stopped automatically
-  (hourly sweeper + checks on login and on every power action).
+- Accounts are valid for **10 days** by default. Expired accounts cannot
+  log in (they get the same generic credential error as a wrong password)
+  and their servers are stopped automatically (hourly sweeper + checks on
+  login and on every power action). Nothing about validity is shown in
+  the web UI.
+- Each user can own at most **2 bots** and run at most **2 bots** at the
+  same time (the admin account is exempt).
 
 ## Application API (for the bot)
 
@@ -53,8 +58,9 @@ On first boot the panel generates an application API key (prefixed
 APP_API_KEY=ptla_...
 ```
 
-It is also visible any time in **Admin → Panel settings**. Give this value
-to the bot as `PTERODACTYL_API_KEY`.
+Alternatively, set the `APP_API_KEY` environment variable to fix the key
+across restarts; the panel then uses that value instead of generating
+one. Give this value to the bot as `PTERODACTYL_API_KEY`.
 
 ## Running
 

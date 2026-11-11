@@ -4,7 +4,7 @@
  * ZVXAY Panel — Pterodactyl-style bot-hosting panel.
  *
  * One process serves:
- *   - the web panel (login, dashboard, server console/files/startup/settings, admin)
+ *   - the web panel (login, dashboard, server console/files/startup/settings)
  *   - the Pterodactyl-compatible Application API used by the Telegram bot
  *   - the hosting engine (user bots run as child processes)
  */
