@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ZVXAY Panel + Telegram bot, side by side in one container.
-# The panel is the main process; the bot runs in a supervised loop so a
-# bot crash can never take the website down with it.
+# The panel (Flask site) is the main process; the bot runs in a supervised
+# loop so a bot crash can never take the website down with it.
 set -u
 cd "$(dirname "$0")"
 
@@ -14,6 +14,15 @@ if [ -z "${DATA_DIR:-}" ]; then
   fi
 fi
 mkdir -p "$DATA_DIR"
+
+# The website's owner account reads OWNER_USERNAME/OWNER_PASSWORD; the host
+# service already carries them as ADMIN_USERNAME/ADMIN_PASSWORD.
+if [ -z "${OWNER_USERNAME:-}" ] && [ -n "${ADMIN_USERNAME:-}" ]; then
+  export OWNER_USERNAME="$ADMIN_USERNAME"
+fi
+if [ -z "${OWNER_PASSWORD:-}" ] && [ -n "${ADMIN_PASSWORD:-}" ]; then
+  export OWNER_PASSWORD="$ADMIN_PASSWORD"
+fi
 
 # The bot keeps its own database in bot/database (relative to its cwd).
 # Point it at the persistent disk via a symlink so bot data survives
@@ -44,5 +53,6 @@ ln -sfn "$BOT_DB_TARGET" "$BOT_DB_LINK"
 ) &
 
 # Panel is the main process: the container lives and dies with it.
+# Single gunicorn worker so the in-app expiry sweeper thread is unique.
 echo "[start.sh] starting panel on port ${PORT:-8080} (data: $DATA_DIR)"
-exec env PORT="${PORT:-8080}" DATA_DIR="$DATA_DIR" node server.js
+exec gunicorn -b "0.0.0.0:${PORT:-8080}" -w 1 --threads 4 app:app
