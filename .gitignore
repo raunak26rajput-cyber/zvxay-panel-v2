@@ -1,0 +1,6 @@
+data/
+node_modules/
+bot/node_modules/
+bot/database
+bot/database.image-backup/
+*.log
