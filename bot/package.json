@@ -1,0 +1,1 @@
+{"dependencies":{"axios":"^1.6.0","chalk":"^4.1.2","dotenv":"^16.0.0","node-telegram-bot-api":"^0.66.0"},"description":"Crittix Pterodactyl Panel Bot","engines":{"node":">=18"},"main":"index.js","name":"crittix-pterodactyl","scripts":{"start":"node index.js"},"version":"1.0.0"}
