@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 # ZVXAY Panel + Telegram bot, side by side in one container.
+# The panel is the main process; the bot runs in a supervised loop so a
+# bot crash can never take the website down with it.
 set -u
 cd "$(dirname "$0")"
 
@@ -22,31 +24,25 @@ mkdir -p "$BOT_DB_TARGET"
 if [ -L "$BOT_DB_LINK" ]; then
   : # already a symlink
 elif [ -d "$BOT_DB_LINK" ]; then
-  # A real directory shipped in the image/repo: move its contents aside
-  # into the persistent location once, then replace it with the symlink.
+  # A real directory shipped in the image/repo: copy its contents into the
+  # persistent location once, then replace it with the symlink.
   cp -a "$BOT_DB_LINK/." "$BOT_DB_TARGET/" 2>/dev/null || true
   mv "$BOT_DB_LINK" "bot/database.image-backup"
 fi
 ln -sfn "$BOT_DB_TARGET" "$BOT_DB_LINK"
 
-PANEL_PID=""
-BOT_PID=""
-cleanup() {
-  [ -n "$BOT_PID" ] && kill "$BOT_PID" 2>/dev/null
-  [ -n "$PANEL_PID" ] && kill "$PANEL_PID" 2>/dev/null
-  wait 2>/dev/null
-  exit 0
-}
-trap cleanup SIGTERM SIGINT
+# Bot in a supervised loop (must not inherit PORT — it would try to bind
+# the same port as the panel). If the bot exits, restart it after 5s.
+(
+  cd bot
+  while true; do
+    echo "[start.sh] starting bot..."
+    env -u PORT node index.js
+    echo "[start.sh] bot exited, restarting in 5s"
+    sleep 5
+  done
+) &
 
-# Panel (listens on $PORT for Render).
-PORT="${PORT:-8080}" DATA_DIR="$DATA_DIR" node server.js &
-PANEL_PID=$!
-
-# Bot (must not inherit PORT — it would try to bind the same port).
-(cd bot && env -u PORT DATA_DIR="$DATA_DIR/bot-runtime" node index.js) &
-BOT_PID=$!
-
-# Exit when either process exits, so the platform restarts the service.
-wait -n "$PANEL_PID" "$BOT_PID"
-cleanup
+# Panel is the main process: the container lives and dies with it.
+echo "[start.sh] starting panel on port ${PORT:-8080} (data: $DATA_DIR)"
+exec env PORT="${PORT:-8080}" DATA_DIR="$DATA_DIR" node server.js
