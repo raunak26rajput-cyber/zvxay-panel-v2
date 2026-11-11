@@ -1,77 +1,51 @@
 # ZVXAY Panel
 
-A Pterodactyl-style bot-hosting panel (Node.js + Express, JSON-file store)
-with a **Pterodactyl-compatible Application API**, so the existing Telegram
-bot in `bot/` works against it with **zero code changes** — it only needs a
-new `PTERODACTYL_URL` and `PTERODACTYL_API_KEY`.
+Bot-hosting website (Flask + SQLAlchemy) with the Telegram bot in `bot/`
+running alongside it in the same container.
 
-## What it does
+## Website
 
-- Web panel: username/password login (scrypt-hashed), dashboard, and a
-  server page at `/server/<identifier>` with **Console** (live logs +
-  Start/Stop/Restart), **Files** (upload / edit / delete), **Startup**
-  (egg variables) and **Settings** (rename, change password) tabs.
-- The seeded admin account logs in like any other user; its dashboard
-  shows every user's servers (owner view). There is no admin UI and no
-  self-registration — accounts are created only by the bot (see below).
-- Hosting engine: user bots run as plain child processes — Python
-  (`pip install` from requirements, then `python3 <file>`) and Node.js
-  (`npm install`, then the configured run command). Logs are captured to
-  `server.log` in each server directory and streamed to the console.
-- Accounts are valid for **10 days** by default. Expired accounts cannot
-  log in (they get the same generic credential error as a wrong password)
-  and their servers are stopped automatically (hourly sweeper + checks on
-  login and on every power action). Nothing about validity is shown in
-  the web UI.
-- Each user can own at most **2 bots** and run at most **2 bots** at the
-  same time (the admin account is exempt).
+- Login with username/password. There is **no self-registration** and **no
+  admin panel** — accounts are created by the Telegram bot.
+- Pages: Dashboard, Upload (.py / .zip), My Files, Logs, bot Setup
+  (main-file picker + requirements install), Start / Stop / Restart.
+- Each account can hold at most **2 bots**.
+- Bot-issued accounts are valid for **10 days**; after that, login fails with
+  the same generic "Invalid username or password." message as wrong
+  credentials, and the account's bots are stopped automatically.
 
-## Application API (for the bot)
+## Telegram bot integration
 
-Base URL: `<panel-url>/api/application`, header `Authorization: Bearer <key>`.
+The bot (unchanged) talks to a Pterodactyl-compatible Application API
+implemented in `botapi.py`:
 
-Implemented: `GET /locations`, `POST /users`, `GET /users/:id`,
-`DELETE /users/:id` (also deletes the user's servers), `GET /nests`,
-`GET /nests/:id/eggs` (eggs named exactly **NODE JS** and **Python Engine**),
-`POST /servers`. Responses and errors use Pterodactyl's shapes
-(`attributes` on single objects, `data` + `meta.pagination` on lists,
-`{ errors: [{ code, status, detail }] }` on failures).
+- `GET /api/application/locations`, `GET /api/application/nests`,
+  `GET /api/application/nests/:id/eggs` (eggs named exactly **NODE JS** and
+  **Python Engine**)
+- `POST /api/application/users`, `GET /api/application/users/:id`,
+  `DELETE /api/application/users/:id`
+- `POST /api/application/servers`, `GET /api/application/servers`
+
+Auth: `Authorization: Bearer <APP_API_KEY>`. API-created users get
+`expiry = today + 10 days`. The bot hands users a `{panel}/server/{identifier}`
+link; that route redirects into the dashboard (or login).
 
 ## Environment variables
 
-| Variable         | Purpose                                              | Default        |
-| ---------------- | ---------------------------------------------------- | -------------- |
-| `PORT`           | Port the panel listens on (set by Render)            | `8080`         |
-| `DATA_DIR`       | Where `db.json` and server files live                | `./data` (or `/data` if it exists) |
-| `ADMIN_USERNAME` | Seeds the admin account on first boot                | —              |
-| `ADMIN_PASSWORD` | Password for the seeded admin account                | —              |
+| Variable | Purpose |
+| --- | --- |
+| `PORT` | Listen port (set by the host) |
+| `DATA_DIR` | SQLite DB + uploads + logs directory |
+| `OWNER_USERNAME` / `OWNER_PASSWORD` | Owner account (falls back to `ADMIN_USERNAME` / `ADMIN_PASSWORD` in `start.sh`) |
+| `APP_API_KEY` | Fixed application API key for the bot (also the session-secret fallback) |
+| `SECRET_KEY` | Optional session secret |
 
-The bot additionally needs its usual env: `BOT_TOKEN`, `PTERODACTYL_URL`
-(this panel's public URL), `PTERODACTYL_API_KEY` (see below), `OWNER_ID`.
-
-## The application API key
-
-On first boot the panel generates an application API key (prefixed
-`ptla_`), stores it in `db.json`, and prints it **once** in the log:
-
-```
-APP_API_KEY=ptla_...
-```
-
-Alternatively, set the `APP_API_KEY` environment variable to fix the key
-across restarts; the panel then uses that value instead of generating
-one. Give this value to the bot as `PTERODACTYL_API_KEY`.
+The bot additionally needs `BOT_TOKEN`, `PTERODACTYL_URL` (this panel's public
+URL) and `PTERODACTYL_API_KEY` (same value as `APP_API_KEY`).
 
 ## Running
 
-Locally:
-
-```bash
-npm install
-ADMIN_USERNAME=admin ADMIN_PASSWORD=changeme PORT=8080 node server.js
-```
-
-On Render: deploy the Docker service from this repo. `start.sh` runs the
-panel (on `$PORT`) and the bot side by side, keeps both data stores on
-`DATA_DIR`, and symlinks `bot/database` to `$DATA_DIR/bot-database` so the
-bot's own database persists on the same disk.
+On the host: the Docker service builds from this repo; `start.sh` runs
+gunicorn for the site (main process, `$PORT`) and supervises the bot beside
+it, and symlinks `bot/database` onto `DATA_DIR` so both stores persist
+together on the disk.
